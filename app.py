@@ -7,8 +7,8 @@ from datetime import date, datetime
 import plotly.graph_objects as go
 
 # ================= DATABASE CONFIG =================
-DB_FILE = "synclife_v46_data.csv"
-USER_DB = "synclife_v46_users.csv"
+DB_FILE = "synclife_v49_data.csv"
+USER_DB = "synclife_v49_users.csv"
 
 def load_data(file, columns):
     if not os.path.exists(file): return pd.DataFrame(columns=columns)
@@ -24,11 +24,7 @@ def save_data(df, file):
 def get_ai_motivation():
     today_seed = date.today().strftime("%Y%m%d")
     random.seed(int(today_seed))
-    
-    themes = [
-        "Metabolic Intelligence", "Biological Resilience", "Peak Performance", 
-        "Neural Clarity", "Longevity Mindset", "Cellular Discipline"
-    ]
+    themes = ["Metabolic Intelligence", "Biological Resilience", "Peak Performance", "Neural Clarity", "Longevity Mindset", "Cellular Discipline"]
     quotes = [
         "Your biology is a reflection of your consistency. Optimize today for a better tomorrow.",
         "The metabolic fire you stoke today burns through the limitations of yesterday.",
@@ -37,10 +33,8 @@ def get_ai_motivation():
         "Precision in your nutrition leads to precision in your focus. Stay sharp.",
         "Recovery is not rest; it is the active rebuilding of your future self."
     ]
-    
     selected_theme = random.choice(themes)
     selected_quote = random.choice(quotes)
-    
     return f'<span style="font-weight:800; text-transform:uppercase; letter-spacing:1px; color:#f0f9ff;">{selected_theme}:</span> "{selected_quote}"'
 
 # ================= AUTHENTICATION LOGIC =================
@@ -93,15 +87,8 @@ st.markdown("""
         font-size: 1.85rem; 
         font-weight: 800; 
         color: inherit; 
-        margin-top: 35px; 
-        margin-bottom: 15px; 
-        padding-bottom: 5px;
-    }
-    
-    .glass-card { 
-        background: rgba(128, 128, 128, 0.08); 
-        border: 1px solid rgba(128, 128, 128, 0.2); 
-        border-radius: 24px; padding: 25px; margin-bottom: 20px; 
+        margin-top: 25px; 
+        margin-bottom: 15px;
     }
     
     .tile { 
@@ -125,15 +112,15 @@ if auth_system():
     df = load_data(DB_FILE, COLUMNS)
     user_df = df[df["User_ID"] == uid]
 
+    d_a, d_g, d_h, d_tw, d_ts, d_tc, d_tsl = 25, "Male", 170.0, 70.0, 10000, 2000, 8.0
     if not user_df.empty:
         last = user_df.iloc[-1]
-        d_a, d_g, d_h, d_tw = int(last.get("User_Age", 25)), last.get("User_Gender", "Male"), float(last.get("User_Height", 170.0)), float(last.get("User_Target_W", 70.0))
-        d_ts, d_tc, d_tsl = int(last.get("Target_Steps", 10000)), int(last.get("Target_Calories", 2000)), float(last.get("Target_Sleep", 8.0))
-    else: d_a, d_g, d_h, d_tw, d_ts, d_tc, d_tsl = 25, "Male", 170.0, 70.0, 10000, 2000, 8.0
+        d_a, d_g, d_h = int(last.get("User_Age", 25)), last.get("User_Gender", "Male"), float(last.get("User_Height", 170.0))
+        d_tw, d_ts, d_tc, d_tsl = float(last.get("User_Target_W", 70.0)), int(last.get("Target_Steps", 10000)), int(last.get("Target_Calories", 2000)), float(last.get("Target_Sleep", 8.0))
 
     with st.sidebar:
         st.markdown(f"## 👤 {st.session_state.user_display_name}")
-        log_date = st.date_input("Log Date", date.today())
+        log_date = st.date_input("Log Date", date.today(), max_value=date.today())
         date_str = log_date.strftime("%Y-%m-%d")
         if st.button("Logout"): st.session_state.authenticated = False; st.rerun()
 
@@ -141,14 +128,10 @@ if auth_system():
             u_name = st.text_input("Name", value=st.session_state.user_display_name)
             u_gender = st.selectbox("Gender", ["Male", "Female", "Other"], index=0 if d_g=="Male" else 1)
             u_age, u_height, u_target_w = st.number_input("Age", value=d_a), st.number_input("Height (cm)", value=d_h), st.number_input("Target Weight (kg)", value=d_tw)
-            u_target_steps = st.number_input("Steps Goal", value=d_ts)
-            u_target_cal = st.number_input("Calories Goal", value=d_tc)
-            u_target_sleep = st.number_input("Sleep Goal", value=d_tsl)
+            u_target_steps, u_target_cal, u_target_sleep = st.number_input("Steps Goal", value=d_ts), st.number_input("Calories Goal", value=d_tc), st.number_input("Sleep Goal", value=d_tsl)
 
         st.markdown("### 🏃 Activity")
-        u_steps = st.number_input("Steps Today", 0)
-        u_weight = st.number_input("Weight (kg)", 0.0)
-        u_focus = st.text_input("Workout", "Resistance Training")
+        u_steps, u_weight, u_focus = st.number_input("Steps Today", 0), st.number_input("Weight (kg)", 0.0), st.text_input("Workout", "Resistance Training")
 
         st.markdown("### 🥗 Nutrition")
         u_cals = st.number_input("Calories", 0)
@@ -168,54 +151,37 @@ if auth_system():
         u_photos = st.file_uploader("Upload Photos", accept_multiple_files=True, key=f"uploader_{date_str}")
 
         if st.button("SYNC DATA", use_container_width=True):
-            final_note = u_notes if u_notes.strip() != "" else "Biology optimized. Syncing complete. 🌟"
             supps_final = [s for s in u_supps if s != "Other"] + ([u_c_supp] if u_c_supp else [])
-            new_row = {"Date": date_str, "User_ID": uid, "User_Name": u_name, "User_Age": u_age, "User_Gender": u_gender, "User_Height": u_height, "User_Target_W": u_target_w, "Target_Steps": u_target_steps, "Target_Sleep": u_target_sleep, "Target_Calories": u_target_cal, "Weight": u_weight, "Steps": u_steps, "Sleep_H": u_sl_h, "Sleep_M": u_sl_m, "Calories": u_cals, "Protein": u_prot, "Carbs": u_carb, "Fats": u_fats, "Fiber": u_fiber, "Tea_Cups": u_tea, "Toilet_Visits": u_dig, "Workout": u_focus, "Supplements": ", ".join(supps_final), "Fasting_Ratio": u_fast, "Daily_Notes": final_note, "Mood": "🙂"}
+            new_row = {"Date": date_str, "User_ID": uid, "User_Name": u_name, "User_Age": u_age, "User_Gender": u_gender, "User_Height": u_height, "User_Target_W": u_target_w, "Target_Steps": u_target_steps, "Target_Sleep": u_target_sleep, "Target_Calories": u_target_cal, "Weight": u_weight, "Steps": u_steps, "Sleep_H": u_sl_h, "Sleep_M": u_sl_m, "Calories": u_cals, "Protein": u_prot, "Carbs": u_carb, "Fats": u_fats, "Fiber": u_fiber, "Tea_Cups": u_tea, "Toilet_Visits": u_dig, "Workout": u_focus, "Supplements": ", ".join(supps_final), "Fasting_Ratio": u_fast, "Daily_Notes": u_notes if u_notes.strip() else "Sync complete. 🌟", "Mood": "🙂"}
             df = pd.concat([df[~((df["Date"] == date_str) & (df["User_ID"] == uid))], pd.DataFrame([new_row])], ignore_index=True)
             save_data(df, DB_FILE)
-            
-            # FIX: Convert images to bytes before saving to session state
-            if u_photos:
-                photo_data = [p.getvalue() for p in u_photos]
-                st.session_state[f"img_{date_str}_{uid}"] = photo_data
+            if u_photos: st.session_state[f"img_{date_str}_{uid}"] = [p.getvalue() for p in u_photos]
             st.rerun()
 
     # DASHBOARD
     st.markdown(f'<div class="welcome-banner"><h3>{get_ai_motivation()}</h3><p style="opacity:0.9;">System Status for {u_name} • {log_date.strftime("%B %d, %Y")}</p></div>', unsafe_allow_html=True)
-    
     day_data = df[(df["Date"] == date_str) & (df["User_ID"] == uid)]
     
     if not day_data.empty:
         row = day_data.iloc[0]
-        c1, c2 = st.columns([1, 1.2])
-        
+        c1, c2 = st.columns(2)
         with c1:
             st.markdown('<div class="main-heading">🧬 BMI Status</div>', unsafe_allow_html=True)
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
             bmi = row['Weight'] / ((u_height/100)**2) if row['Weight'] > 0 else 0
-            if bmi < 18.5: status, col = "Underweight", "#3b82f6"
-            elif 18.5 <= bmi < 25: status, col = "Healthy Weight", "#10b981"
-            elif 25 <= bmi < 30: status, col = "Overweight", "#f59e0b"
-            elif 30 <= bmi < 35: status, col = "Obese Class I", "#ef4444"
-            elif 35 <= bmi < 40: status, col = "Obese Class II", "#b91c1c"
-            else: status, col = "Obese Class III", "#7f1d1d"
-
-            fig = go.Figure(go.Indicator(mode="gauge+number", value=bmi, number={'font':{'color':col}}, gauge={'axis':{'range':[15,40]}, 'bar':{'color':col}}))
-            fig.update_layout(height=180, margin=dict(t=0,b=0), paper_bgcolor='rgba(0,0,0,0)')
+            status, col = ("Underweight", "#3b82f6") if bmi < 18.5 else ("Healthy Weight", "#10b981") if bmi < 25 else ("Overweight", "#f59e0b") if bmi < 30 else ("Obese", "#ef4444")
+            fig = go.Figure(go.Indicator(mode="gauge+number", value=bmi, number={'font':{'color':col, 'size':45}, 'suffix': ' BMI'}, gauge={'axis':{'range':[15,40]}, 'bar':{'color':col}}))
+            fig.update_layout(height=250, margin=dict(t=0,b=0,l=20,r=20), paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig, use_container_width=True)
-            st.markdown(f"<center><b style='font-size:1.2rem; color:{col};'>{status}</b></center>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(f"<center><b style='font-size:1.4rem; color:{col};'>{status}</b></center>", unsafe_allow_html=True)
 
         with c2:
             st.markdown('<div class="main-heading">🎯 Target Progress</div>', unsafe_allow_html=True)
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
             st.write(f"👣 Steps: {row['Steps']} / {u_target_steps}")
             st.progress(min(1.0, row['Steps']/max(1, u_target_steps)))
             st.write(f"🍎 Calories: {row['Calories']} / {u_target_cal}")
             st.progress(min(1.0, row['Calories']/max(1, u_target_cal)))
             st.write(f"💤 Sleep: {row['Sleep_H']}h / {u_target_sleep}h")
             st.progress(min(1.0, row['Sleep_H']/max(1, u_target_sleep)))
-            st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('<div class="main-heading">📊 Performance Summary</div>', unsafe_allow_html=True)
         t1, t2, t3, t4 = st.columns(4)
@@ -225,13 +191,12 @@ if auth_system():
         with t4: st.markdown(f'<div class="tile" style="border-top-color:#8b5cf6;"><div class="tile-header">Recovery</div><div class="tile-value">💤 {row["Sleep_H"]}h {row["Sleep_M"]}m</div><div class="tile-sub">🍵 {row["Tea_Cups"]} cups tea</div></div>', unsafe_allow_html=True)
 
         st.markdown('<div class="main-heading">📸 Daily Media & Journal</div>', unsafe_allow_html=True)
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        # CLEANED: Removed the 'glass-card' div from here to remove the block
         if f"img_{date_str}_{uid}" in st.session_state:
             cols = st.columns(4)
             for i, img_bytes in enumerate(st.session_state[f"img_{date_str}_{uid}"]):
                 cols[i%4].image(img_bytes, use_container_width=True)
         st.info(f"**Supplements:** {row['Supplements']}")
         st.info(f"**Journal Note:** {row['Daily_Notes']}")
-        st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.info("No data for this date. Use the sidebar to log your metrics!")
+        st.info("No entry found for this date. Use the sidebar to log your biology!")
